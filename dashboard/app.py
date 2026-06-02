@@ -23,20 +23,25 @@ def plot_dashboard(results, metrics: dict, aligned: pd.DataFrame, ticker: str) -
     figure.update_layout(title_text=f"{ticker} Fama-French 3-Factor Model", title_x=0.5)
     
     ### Panel 1
-    X = results.fittedvalues.index
     y_pred = results.fittedvalues.values
     y_true = results.model.endog
     
     figure.add_trace(
-        go.Scatter(x=X, y=y_pred, mode="markers", name="Predicted"), row=1, col=1
+        go.Scatter(x=y_pred, y=y_true, mode="markers", name="Actual vs Fitted"), 
+        row=1, col=1
     )
+    
+    min_val = min(y_pred.min(), y_true.min())
+    max_val = max(y_pred.max(), y_true.max())
     
     figure.add_trace(
-        go.Scatter(x=X, y=y_true, name="Actual"), row=1, col=1
+        go.Scatter(x=[min_val, max_val], y=[min_val, max_val], 
+                   mode="lines", name="Perfect Fit", line=dict(dash="dash")), 
+        row=1, col=1
     )
     
-    figure.update_xaxes(title_text="Date", row=1, col=1)
-    figure.update_yaxes(title_text="Returns", row=1, col=1)
+    figure.update_xaxes(title_text="Fitted Returns", row=1, col=1)
+    figure.update_yaxes(title_text="Actual Returns", row=1, col=1)
     
     ### Panel 2
     # beta = cov(stock, mkt) / var(mkt)
@@ -44,7 +49,7 @@ def plot_dashboard(results, metrics: dict, aligned: pd.DataFrame, ticker: str) -
     rolling_var = aligned.loc[:, "Mkt-RF"].rolling(60).var()
     rolling_beta = rolling_cov / rolling_var
     
-    X = aligned.index[:-59]
+    X = aligned.index
     y = rolling_beta
     
     figure.add_trace(
@@ -54,8 +59,20 @@ def plot_dashboard(results, metrics: dict, aligned: pd.DataFrame, ticker: str) -
     figure.update_yaxes(title_text="Beta", row=2, col=1)
     
     ### Panel 3
-    metric_names = list(metrics.keys())
-    metric_values = [v if k not in ["t_stats", "p_values"] else list(v.values()) for k, v in metrics.items()]
+    metric_names = []
+    metric_values = []
+    
+    for k, v in metrics.items():
+        if k in ["t_stats", "p_values"]:
+            for factor, val in v.items():
+                metric_names.append(f"{k} ({factor})")
+                metric_values.append(f"{val:.4f}")
+        elif k == "alpha":
+            metric_names.append(k)
+            metric_values.append(f"{v:.2%}")
+        else:
+            metric_names.append(k)
+            metric_values.append(f"{v:.4f}")
     
     figure.add_trace(
         go.Table(header=dict(values=["Metric", "Value"]), 
