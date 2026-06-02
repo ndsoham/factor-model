@@ -23,7 +23,7 @@ def run_regression(stock_returns: pd.Series, factors: pd.DataFrame) -> any:
     y = aligned["excess"]
     
     results = sm.OLS(y, X).fit()
-    return results
+    return results, aligned
     
     
     
